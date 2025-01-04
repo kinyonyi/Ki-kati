@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ki_kati/components/custom_button.dart';
 import 'package:ki_kati/components/http_servive.dart';
+import 'package:ki_kati/screens/group_message_screen.dart';
 
 class KikatiGroup extends StatefulWidget {
   const KikatiGroup({super.key});
@@ -57,11 +58,12 @@ class _KikatiGroupState extends State<KikatiGroup> {
     });
 
     try {
-      final response = await httpService.get('/users/myGroups');
+      final response = await httpService.get('/groups/my-groups');
       setState(() {
-        myGroups = List.from(response);
+        myGroups = List<Map<String, dynamic>>.from(response['groups']);
       });
     } catch (e) {
+      print(e);
       setState(() {
         myGroups = [];
       });
@@ -82,9 +84,10 @@ class _KikatiGroupState extends State<KikatiGroup> {
     });
 
     try {
-      final response = await httpService.get('/groups/available');
+      final response = await httpService.get('/groups/all-groups');
+      print(response);
       setState(() {
-        availableGroups = List.from(response);
+        availableGroups = List<Map<String, dynamic>>.from(response['groups']);
       });
     } catch (e) {
       setState(() {
@@ -169,6 +172,38 @@ class _KikatiGroupState extends State<KikatiGroup> {
     getFriends(); // Fetch friends on initialization
     getMyGroups(); // Fetch the user's groups
     getAvailableGroups(); // Fetch available groups
+  }
+
+  // Show bottom sheet for members of the group
+  void _showMembersBottomSheet(List<dynamic> members) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 300, // Set a height for the bottom sheet
+          child: ListView.builder(
+            itemCount: members.length,
+            itemBuilder: (context, index) {
+              final member = members[index];
+              final firstName = member['firstName'];
+              final lastName = member['lastName'];
+              final username = member['username'];
+              final initials = _getInitials(firstName, lastName);
+
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: Text(initials),
+                ),
+                title: Text('$firstName $lastName'),
+                subtitle: Text(username),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -377,30 +412,6 @@ class _KikatiGroupState extends State<KikatiGroup> {
                     },
                   ),
             const SizedBox(height: 20),
-            isMyGroups
-                ? ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: myGroups.length,
-                    itemBuilder: (context, index) {
-                      final group = myGroups[index];
-                      return ListTile(
-                        title: Text(group['name']),
-                        subtitle: Text("Members: ${group['members'].length}"),
-                      );
-                    },
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: availableGroups.length,
-                    itemBuilder: (context, index) {
-                      final group = availableGroups[index];
-                      return ListTile(
-                        title: Text(group['name']),
-                        subtitle: Text("Members: ${group['members'].length}"),
-                      );
-                    },
-                  ),
-            const SizedBox(height: 20),
             CustomButton(
               onTap: _createGroup,
               buttonText: _isLoading
@@ -410,6 +421,93 @@ class _KikatiGroupState extends State<KikatiGroup> {
               color: _isLoading
                   ? const Color.fromARGB(255, 38, 34, 34)
                   : Colors.teal,
+            ),
+            const SizedBox(height: 20),
+            isMyGroups
+                ? const Text(
+                    "My Groups",
+                    style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey),
+                  )
+                : const Text(
+                    "All Groups",
+                    style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey),
+                  ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 300,
+              child: isMyGroups
+                  ? ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: myGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = myGroups[index];
+                        return Column(
+                          children: [
+                            ListTile(
+                              title: Text(group['name']),
+                              subtitle:
+                                  Text("Members: ${group['members'].length}"),
+                              trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.people,
+                                          color: Colors.blue),
+                                      onPressed: () {
+                                        _showMembersBottomSheet(
+                                            group['members']);
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.chat,
+                                          color: Colors.green),
+                                      onPressed: () {
+                                        // Navigate to chat with group page or start chat
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                GroupMessageScreen(
+                                              currentUserName: "unknown",
+                                              targetUserId:
+                                                  group['_id'] ?? "Unknown",
+                                              targetUsername:
+                                                  group['name'] ?? 'Unknown',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ]),
+                            ),
+                            const Divider()
+                          ],
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: availableGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = availableGroups[index];
+                        return Column(
+                          children: [
+                            ListTile(
+                              title: Text(group['name']),
+                              subtitle:
+                                  Text("Members: ${group['members'].length}"),
+                            ),
+                            const Divider()
+                          ],
+                        );
+                      },
+                    ),
             ),
           ],
         ),
