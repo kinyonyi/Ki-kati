@@ -4,6 +4,7 @@ import 'package:ki_kati/screens/feed_screen.dart';
 import 'package:ki_kati/screens/friend_requests_screen.dart';
 import 'package:ki_kati/screens/friends_screen.dart';
 import 'package:ki_kati/screens/group_screen.dart';
+import 'package:ki_kati/screens/market_screen.dart';
 import 'package:ki_kati/screens/search_screen.dart';
 import 'package:ki_kati/screens/settings_screen.dart';
 
@@ -22,6 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
     const FriendsScreen(),
     const SettingsScreen(),
   ];
+
+  ScrollController _scrollController = ScrollController();
+  bool _isFabVisible = true;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -136,9 +140,37 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
-      body: _screens[_selectedIndex], // Display the selected screen
-
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (scrollNotification) {
+          if (scrollNotification is ScrollUpdateNotification) {
+            // Detect scroll direction
+            if (scrollNotification.scrollDelta! > 0 && _isFabVisible) {
+              // Scrolling down
+              setState(() {
+                _isFabVisible = false;
+              });
+            } else if (scrollNotification.scrollDelta! < 0 && !_isFabVisible) {
+              // Scrolling up
+              setState(() {
+                _isFabVisible = true;
+              });
+            }
+          }
+          return true;
+        },
+        child: _screens[_selectedIndex], // Display the selected screen
+      ),
+      floatingActionButton: _isFabVisible
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MarketScreen()),
+                );
+              },
+              child: const Icon(Icons.store),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
