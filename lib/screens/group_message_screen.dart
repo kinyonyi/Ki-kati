@@ -49,14 +49,14 @@ class MessageModel {
 }
 
 class GroupMessageScreen extends StatefulWidget {
-  final String targetUserId;
+  final String targetGroupId;
   final String currentUserName;
-  final String targetUsername;
+  final String targetGroupName;
   const GroupMessageScreen({
     super.key,
     required this.currentUserName,
-    required this.targetUserId,
-    required this.targetUsername,
+    required this.targetGroupId,
+    required this.targetGroupName,
   });
 
   @override
@@ -74,6 +74,8 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
   final ScrollController _scrollController =
       ScrollController(); // Scroll controller to manage scrolling
 
+  List<File> filesSelected = [];
+
   bool isLoading = false;
 
   final HttpService httpService = HttpService("https://ki-kati.com/api");
@@ -86,7 +88,7 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
   void _onMessageInputChange() async {
     // If the user starts typing, set isTyping to
     if (messageController.text.isNotEmpty && !isTyping) {
-      _socketService.sendTyping(widget.currentUserName, widget.targetUserId);
+      _socketService.sendTyping(widget.currentUserName, widget.targetGroupId);
     }
 
     // Cancel the previous timer if the user continues typing
@@ -98,8 +100,39 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
     _typingTimer = Timer(const Duration(seconds: 2), () {
       // After 2 seconds of inactivity, set isTyping to
       _socketService.sendStopTyping(
-          widget.currentUserName, widget.targetUserId);
+          widget.currentUserName, widget.targetGroupId);
     });
+  }
+
+  // Fetch active users from the API
+  Future<List<MessageModel>> fetchChatHistory() async {
+    try {
+      final response =
+          await httpService.get("/groups/conversation/${widget.targetGroupId}");
+      //print(response);
+
+      // Assuming response is a list of messages from the API
+      final List<dynamic> data = List.from(response);
+
+      List<MessageModel> loadedMessages = data.map((msg) {
+        // Converting the raw message data into MessageModel
+        return MessageModel(
+          uid: msg['_id'].toString(),
+          recvId: msg['recipient']['_id'],
+          message: msg['content'],
+          senderUsername: msg['sender']['username'],
+          senderProfileImage: msg['sender']['profileImage'] ??
+              "", // Assuming sender profile image is available
+          type: MessageType.text, // Modify if you handle other message types
+          timeSent: DateTime.parse(msg['timestamp']),
+        );
+      }).toList();
+
+      return loadedMessages;
+    } catch (error) {
+      print("Error fetching chat history: $error");
+      return [];
+    }
   }
 
   @override
@@ -108,6 +141,10 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
 
     // Listen for changes in the message input field
     messageController.addListener(_onMessageInputChange);
+    //load chat history
+    chatHistory = fetchChatHistory();
+
+    _loadChatHistory();
 
     // Listen for new direct messages
     _socketService.socket.on("directMessage", (data) {
@@ -159,6 +196,28 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
     });
   }
 
+  Future<void> _loadChatHistory() async {
+    setState(() {
+      isLoading = true; // Start loading
+    });
+    try {
+      // Wait for the chat history to be fetched
+      final initialMessages = await fetchChatHistory();
+
+      // Use setState to update the UI with the fetched messages
+      setState(() {
+        messages = initialMessages;
+        isLoading = false; // Stop loading
+      });
+      _scrollToLastMessage(); //scroll to the last mesage that was recieved then!
+    } catch (error) {
+      setState(() {
+        isLoading = false; // Stop loading on error
+      });
+      print("Error loading chat history: $error");
+    }
+  }
+
   @override
   void dispose() {
     // Clean up listener when the screen is disposed
@@ -198,40 +257,107 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
     }
   }
 
+  // Function to send message
+  void sendMessage() {
+    // ignore: unnecessary_null_comparison
+    if (messageController.text.isNotEmpty || filesSelected.isNotEmpty) {
+      final message = MessageModel(
+        uid: Random().nextInt(100000).toString(),
+        recvId: widget.targetGroupId,
+        message: messageController.text,
+        files: filesSelected.map((e) => e.path).join(', '),
+        senderUsername:
+            widget.currentUserName, // This should be the actual username
+        senderProfileImage: "", // You can pass the actual profile image URL
+        type: MessageType.text,
+        timeSent: DateTime.now(),
+      );
+
+      setState(() {
+        messages.add(message);
+        _socketService.sendMessage(widget.targetGroupId, messageController.text,
+            widget.currentUserName);
+      });
+
+      messageController.clear();
+
+      // Scroll to the last message after a new message has been added
+      _scrollToLastMessage();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-            backgroundColor: Colors.teal, // Solid blue background color
-            foregroundColor: Colors.white,
-            title: Row(children: [
-              const CircleAvatar(
-                backgroundImage: AssetImage(
-                    "images/logo.png"), // Add the target profile image URL
+      appBar: AppBar(
+          backgroundColor: Colors.teal, // Solid blue background color
+          foregroundColor: Colors.white,
+          title: Row(children: [
+            const CircleAvatar(
+              backgroundImage: AssetImage(
+                  "images/logo.png"), // Add the target profile image URL
+            ),
+            const SizedBox(
+                width:
+                    10), // Add some space between the avatar and the username
+            Text(
+              capitalizeAndFormatName(widget.targetGroupName),
+              style: const TextStyle(fontSize: 14),
+            ),
+          ]),
+          actions: [
+            if (isTyping) // Only show the typing indicator when `isTyping` is true
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  '${widget.targetGroupName} is typing...',
+                  style: const TextStyle(fontSize: 14),
+                ),
               ),
-              const SizedBox(
-                  width:
-                      10), // Add some space between the avatar and the username
-              Text(
-                capitalizeAndFormatName(widget.targetUsername),
-                style: const TextStyle(fontSize: 14),
-              ),
-            ]),
-            actions: [
-              if (isTyping) // Only show the typing indicator when `isTyping` is true
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    '${widget.targetUsername} is typing...',
-                    style: const TextStyle(fontSize: 14),
+          ]),
+      body: isLoading
+          ? const Center(
+              child:
+                  CircularProgressIndicator()) // Show loading indicator if loading
+          : Column(
+              children: [
+                // Chat messages list
+                Expanded(
+                  child: ListView.builder(
+                    controller:
+                        _scrollController, // Attach the scroll controller
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return Dismissible(
+                        key: Key(message.uid), // Unique key for each message
+                        direction:
+                            DismissDirection.endToStart, // Swipe to delete
+                        onDismissed: (direction) {
+                          // Delete the message after swiping
+                          /*_deleteMessage(message.uid);*/
+                          /*
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Message deleted")));
+                        */
+                        },
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                          ),
+                        ),
+                        child: MessageBubble(
+                          message: message,
+                          username: widget.currentUserName,
+                        ),
+                      );
+                    },
                   ),
                 ),
-            ]),
-        body: isLoading
-            ? const Center(
-                child:
-                    CircularProgressIndicator()) // Show loading indicator if loading
-            : Column(children: [
+
                 // Message input field
                 Padding(
                   padding: const EdgeInsets.all(8.0),
@@ -276,12 +402,82 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
                         icon: const Icon(Icons.attach_file),
                       ),
                       IconButton(
-                        onPressed: () {},
+                        onPressed: sendMessage,
                         icon: const Icon(Icons.send),
                       )
                     ],
                   ),
                 ),
-              ]));
+              ],
+            ),
+    );
+  }
+}
+
+// Widget for displaying each message
+class MessageBubble extends StatelessWidget {
+  final MessageModel message;
+  final String username;
+
+  const MessageBubble(
+      {super.key, required this.message, required this.username});
+
+  String formatTimestamp(DateTime dateTime) {
+    return DateFormat('hh:mm a').format(dateTime); // Format for time
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isSender =
+        message.senderUsername == username; // Replace with actual check
+    return Align(
+      alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        child: Column(
+          crossAxisAlignment:
+              isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: isSender
+                    ? const Color.fromARGB(255, 211, 230, 246)
+                    : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.message,
+                    style: TextStyle(
+                      color: isSender ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  Text(
+                    message.senderUsername,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Color.fromARGB(255, 30, 29, 29)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              formatTimestamp(message.timeSent),
+              style: TextStyle(
+                fontSize: 12,
+                color: isSender
+                    ? const Color.fromARGB(179, 17, 17, 17)
+                    : Colors.black45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

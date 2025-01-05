@@ -474,10 +474,11 @@ class _KikatiGroupState extends State<KikatiGroup> {
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 GroupMessageScreen(
-                                              currentUserName: "unknown",
-                                              targetUserId:
+                                              currentUserName:
+                                                  "unknown", //get teh details of the current logged in user from local storage to use for typing purposes
+                                              targetGroupId:
                                                   group['_id'] ?? "Unknown",
-                                              targetUsername:
+                                              targetGroupName:
                                                   group['name'] ?? 'Unknown',
                                             ),
                                           ),
