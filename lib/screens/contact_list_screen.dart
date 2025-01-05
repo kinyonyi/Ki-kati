@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:ki_kati/components/http_servive.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ContactListScreen extends StatefulWidget {
@@ -10,12 +11,42 @@ class ContactListScreen extends StatefulWidget {
 }
 
 class _ContactListScreenState extends State<ContactListScreen> {
+  final HttpService httpService = HttpService("https://ki-kati.com/api");
+  bool isLoading = false;
+
+  List<Map<String, dynamic>> users = [];
+
   List<Contact> _contacts = [];
+
+  Future<void> getUsers() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await httpService.get('/users/all-users');
+      setState(() {
+        users = List.from(response);
+      });
+    } catch (e) {
+      setState(() {
+        users = [];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load friends')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _getContacts();
+    getUsers();
   }
 
   // Function to request permissions and fetch contacts
