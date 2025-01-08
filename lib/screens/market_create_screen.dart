@@ -22,7 +22,8 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
   final descriptionController = TextEditingController();
   final priceController = TextEditingController();
   final categoryController = TextEditingController();
-  final locationController = TextEditingController();
+  final locationCityController = TextEditingController();
+  final locationRegionController = TextEditingController();
   final quantityController = TextEditingController();
   List<File> filesSelected = [];
 
@@ -31,7 +32,8 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
   String? _descriptionError;
   String? _priceError;
   String? _categoryError;
-  String? _locationError;
+  String? _locationCityError;
+  String? _locationRegionError;
   String? _quantityError;
 
   void _clearFields() {
@@ -39,7 +41,8 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
     descriptionController.clear();
     priceController.clear();
     categoryController.clear();
-    locationController.clear();
+    locationCityController.clear();
+    locationRegionController.clear();
     quantityController.clear();
   }
 
@@ -52,8 +55,12 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
     _priceError = priceController.text.isEmpty ? 'Price cannot be empty' : null;
     _categoryError =
         categoryController.text.isEmpty ? 'Category cannot be empty' : null;
-    _locationError =
-        locationController.text.isEmpty ? 'Location cannot be empty' : null;
+    _locationCityError = locationCityController.text.isEmpty
+        ? 'Location City cannot be empty'
+        : null;
+    _locationRegionError = locationRegionController.text.isEmpty
+        ? 'Location Region cannot be empty'
+        : null;
     _quantityError =
         quantityController.text.isEmpty ? 'Quantity cannot be empty' : null;
 
@@ -61,7 +68,8 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
         _descriptionError == null &&
         _priceError == null &&
         _categoryError == null &&
-        _locationError == null &&
+        _locationCityError == null &&
+        _locationRegionError == null &&
         _quantityError == null;
   }
 
@@ -115,7 +123,8 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
         'title': titleController.text,
         'price': priceController.text,
         'category': categoryController.text,
-        'location': locationController.text,
+        'location[city]': locationCityController.text,
+        'location[region]': locationRegionController.text,
         'media': filesSelected,
         'quantity': quantityController.text,
       });
@@ -143,16 +152,15 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
         appBar: AppBar(
           foregroundColor: Colors.white,
           backgroundColor: Colors.teal,
-          title: const Text('Create Item'),
+          title: const Text(
+            'Create Item',
+            style: TextStyle(fontSize: 20),
+          ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: ListView(
             children: [
-              const Text(
-                'Please ensure that all required fields in the form are filled out accurately before submitting. Providing complete and valid information is necessary to successfully publish your item. Incomplete submissions may result in delays or rejection of your listing. Thank you for your cooperation!',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
               const SizedBox(height: 10),
               TextFieldComponent(
                 controller: titleController,
@@ -166,6 +174,7 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
                 controller: descriptionController,
                 hintText: 'Description',
                 obscureText: false,
+                maxLines: 5,
                 suffixIcon: const Icon(Icons.details, color: Color(0xFFBDBDBD)),
                 errorText: _descriptionError,
               ),
@@ -187,13 +196,30 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
                 errorText: _categoryError,
               ),
               const SizedBox(height: 10),
-              TextFieldComponent(
-                controller: locationController,
-                hintText: 'Location',
-                obscureText: false,
-                suffixIcon:
-                    const Icon(Icons.pin_drop, color: Color(0xFFBDBDBD)),
-                errorText: _locationError,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFieldComponent(
+                      controller: locationCityController,
+                      hintText: 'Location (city)',
+                      obscureText: false,
+                      suffixIcon:
+                          const Icon(Icons.pin_drop, color: Color(0xFFBDBDBD)),
+                      errorText: _locationCityError,
+                    ),
+                  ),
+                  const SizedBox(width: 10), // Space between the fields
+                  Expanded(
+                    child: TextFieldComponent(
+                      controller: locationRegionController,
+                      hintText: 'Location (region)',
+                      obscureText: false,
+                      suffixIcon: const Icon(Icons.area_chart,
+                          color: Color(0xFFBDBDBD)),
+                      errorText: _locationRegionError,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               TextFieldComponent(
@@ -272,7 +298,7 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
                 ),
                 style: TextButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8), // Rounded corners
                     side: const BorderSide(

@@ -37,6 +37,24 @@ class SecureStorageService {
     }
   }
 
+  Future<void> updateUserData(String key, Map<String, dynamic> updates) async {
+    try {
+      Map<String, dynamic>? existingData = await retrieveData(key);
+
+      if (existingData != null) {
+        existingData.addAll(updates); // Merge updates into existing data
+
+        // Step 3: Store the updated data back into storage
+        await storeData(key, existingData);
+        print("User data updated successfully.");
+      } else {
+        print("No existing data found for key: $key");
+      }
+    } catch (e) {
+      print("Error updating user data: $e");
+    }
+  }
+
   // Method to delete data
   Future<void> deleteData(String key) async {
     try {

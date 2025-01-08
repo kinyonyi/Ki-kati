@@ -100,25 +100,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   void _saveProfile() async {
+    final dateParts = _dateOfBirthController.text.split('/');
+    final formattedDateOfBirth =
+        '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
     final updatedUserData = {
       "username": _usernameController.text,
       "firstName": _firstNameController.text,
       "lastName": _lastNameController.text,
       "email": _emailController.text,
       "phoneNumber": _phoneNumberController.text,
-      "dateOfBirth":
-          _dateOfBirthController.text, // Here we save the formatted date
+      "dateOfBirth": formattedDateOfBirth, // Here we save the formatted date
       "gender": _gender,
     };
 
     try {
       final response = await httpService.put('/auth/profile', updatedUserData);
       print(response);
-      if (response['statusCode'] == 201) {
+      if (response['statusCode'] == 200) {
         // Simulate success
         print("data updated");
         String message =
             response['body']['message'] ?? 'Data Updated Successfully!';
+
+        await storageService.updateUserData(
+            'user_data', response['body']['user']);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );

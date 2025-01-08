@@ -1,39 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:ki_kati/components/http_servive.dart';
-import 'package:ki_kati/screens/market_create_screen.dart';
 import 'package:ki_kati/screens/market_details_screen.dart';
 
-class MarketScreen extends StatefulWidget {
-  const MarketScreen({super.key});
+class MarketSellerItemsScreen extends StatefulWidget {
+  final String userId;
+
+  const MarketSellerItemsScreen({super.key, required this.userId});
 
   @override
-  State<MarketScreen> createState() => _MarketScreenState();
+  State<MarketSellerItemsScreen> createState() =>
+      _MarketSellerItemsScreenState();
 }
 
-class _MarketScreenState extends State<MarketScreen> {
+class _MarketSellerItemsScreenState extends State<MarketSellerItemsScreen> {
   final HttpService httpService = HttpService("https://ki-kati.com/api");
-  List<Map<String, dynamic>> items = [];
+  List<Map<String, dynamic>> sellerItems = [];
   List<Map<String, dynamic>> filteredItems = [];
   bool isLoading = false;
 
-  Future<void> getMarketItems() async {
+  Future<void> getSellerItems() async {
     setState(() {
       isLoading = true;
     });
 
     try {
-      final response = await httpService.get('/market');
+      final response = await httpService.get('/market/user/${widget.userId}');
       setState(() {
-        items = List.from(response);
-        filteredItems = items; // Initially, filteredItems are all items
+        sellerItems = List.from(response);
+        filteredItems = sellerItems; // Initially, show all items
       });
     } catch (e) {
-      setState(() {
-        items = [];
-        filteredItems = [];
-      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to Load Market Items')),
+        const SnackBar(content: Text('Failed to Load Seller Items')),
       );
     } finally {
       setState(() {
@@ -42,14 +40,8 @@ class _MarketScreenState extends State<MarketScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    getMarketItems();
-  }
-
   void _searchItems(String query) {
-    final results = items.where((item) {
+    final results = sellerItems.where((item) {
       final title = item['title']?.toLowerCase() ?? '';
       return title.contains(query.toLowerCase());
     }).toList();
@@ -59,18 +51,10 @@ class _MarketScreenState extends State<MarketScreen> {
     });
   }
 
-  void _navigateToDetails(String itemId) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MarketDetailsScreen(itemId: itemId),
-      ),
-    );
-
-    if (result == true) {
-      // Refresh the data if item was deleted
-      getMarketItems();
-    }
+  @override
+  void initState() {
+    super.initState();
+    getSellerItems();
   }
 
   @override
@@ -79,18 +63,15 @@ class _MarketScreenState extends State<MarketScreen> {
       appBar: AppBar(
         foregroundColor: Colors.white,
         backgroundColor: Colors.teal,
-        title: const Text(
-          'Market Items',
-          style: TextStyle(fontSize: 20),
-        ),
+        title: const Text('Seller Items'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: MarketSearchDelegate(
-                  items: items,
+                delegate: SellerSearchDelegate(
+                  items: sellerItems,
                   onSearch: _searchItems,
                 ),
               );
@@ -101,7 +82,7 @@ class _MarketScreenState extends State<MarketScreen> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: getMarketItems, // Pull-to-refresh callback
+              onRefresh: getSellerItems, // Pull-to-refresh callback
               child: filteredItems.isEmpty
                   ? const Center(child: Text('No items available'))
                   : ListView.separated(
@@ -144,36 +125,36 @@ class _MarketScreenState extends State<MarketScreen> {
                               style: const TextStyle(fontSize: 14),
                             ),
                             trailing: const Icon(Icons.arrow_right),
-                            onTap: () => _navigateToDetails(item['_id']),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MarketDetailsScreen(
+                                    itemId: item['_id'],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         );
                       },
                     ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MarketCreateScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
 
-class MarketSearchDelegate extends SearchDelegate {
+class SellerSearchDelegate extends SearchDelegate {
   final List<Map<String, dynamic>> items;
   final Function(String) onSearch;
 
-  MarketSearchDelegate({required this.items, required this.onSearch});
+  SellerSearchDelegate({required this.items, required this.onSearch});
 
   @override
   ThemeData appBarTheme(BuildContext context) {
     return ThemeData(
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.teal, // Teal background
+        backgroundColor: Colors.teal, // Match parent screen's style
         foregroundColor: Colors.white, // White text and icons
         elevation: 0,
         titleTextStyle: TextStyle(
@@ -183,9 +164,7 @@ class MarketSearchDelegate extends SearchDelegate {
         ),
       ),
       inputDecorationTheme: const InputDecorationTheme(
-        border: InputBorder.none, // No border
-        focusedBorder: InputBorder.none, // No border when focused
-        enabledBorder: InputBorder.none, // No border when enabled
+        border: InputBorder.none, // No borders for search input
         hintStyle: TextStyle(color: Colors.white70), // Hint text style
       ),
       textTheme: const TextTheme(
@@ -256,14 +235,7 @@ class MarketSearchDelegate extends SearchDelegate {
           title: Text(item['title'] ?? 'No Title'),
           subtitle: Text('Price: ${item['price']}'),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MarketDetailsScreen(
-                  itemId: item['_id'],
-                ),
-              ),
-            );
+            // Navigate to item details if needed
           },
         );
       },

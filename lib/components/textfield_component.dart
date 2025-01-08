@@ -7,6 +7,7 @@ class TextFieldComponent extends StatelessWidget {
   final Widget? suffixIcon;
   final TextInputType keyboardType;
   final String? errorText;
+  final int maxLines;
 
   const TextFieldComponent({
     super.key,
@@ -16,6 +17,7 @@ class TextFieldComponent extends StatelessWidget {
     this.suffixIcon,
     this.keyboardType = TextInputType.text,
     this.errorText,
+    this.maxLines = 1,
   });
 
   @override
@@ -26,6 +28,7 @@ class TextFieldComponent extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        maxLines: maxLines,
         decoration: InputDecoration(
             enabledBorder: const OutlineInputBorder(
               borderSide: BorderSide(color: Colors.white),
