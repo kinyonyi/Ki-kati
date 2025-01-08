@@ -172,7 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             return ChatItem(
                               name: friendUsername,
                               message:
-                                  "last message here ...", // Placeholder for last message
+                                  "messages ...", // Placeholder for last message
                               time: isActive,
                               unreadCount:
                                   0, // Placeholder for unread messages count
@@ -261,7 +261,8 @@ class ChatItem extends StatelessWidget {
           backgroundColor: avatarColor,
           child: Text(name[0], style: const TextStyle(color: Colors.white)),
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(name,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         subtitle: Text(
           message,
           style: const TextStyle(fontSize: 12),

@@ -115,7 +115,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     try {
       final response = await httpService.put('/auth/profile', updatedUserData);
-      print(response);
+      print(response['body']['user']);
       if (response['statusCode'] == 200) {
         // Simulate success
         print("data updated");

@@ -222,6 +222,66 @@ class _KikatiGroupState extends State<KikatiGroup> {
     );
   }
 
+  Future<void> _joinGroup(String groupId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response =
+          await httpService.post('/groups/join', {'groupId': groupId});
+      if (response['statusCode'] == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Successfully joined the group.')),
+        );
+        getAvailableGroups(); // Refresh available groups
+        getMyGroups(); // Refresh my groups
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to join the group.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _leaveGroup(String groupId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response =
+          await httpService.post('/groups/leave', {'groupId': groupId});
+      if (response['statusCode'] == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Successfully left the group.')),
+        );
+        getMyGroups(); // Refresh my groups
+        getAvailableGroups(); // Refresh available groups
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to leave the group.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -501,6 +561,14 @@ class _KikatiGroupState extends State<KikatiGroup> {
                                         );
                                       },
                                     ),
+                                    IconButton(
+                                      icon: const Icon(Icons.exit_to_app,
+                                          color: Colors.red),
+                                      onPressed: () {
+                                        _leaveGroup(group['_id']);
+                                      },
+                                      tooltip: 'Leave Group',
+                                    ),
                                   ]),
                             ),
                             const Divider()
@@ -519,6 +587,19 @@ class _KikatiGroupState extends State<KikatiGroup> {
                               title: Text(group['name']),
                               subtitle:
                                   Text("Members: ${group['members'].length}"),
+                              trailing: ElevatedButton(
+                                onPressed: () {
+                                  _joinGroup(group['_id']);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Colors.teal, // Join button color
+                                ),
+                                child: const Text(
+                                  "Join Group",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
                             ),
                             const Divider()
                           ],

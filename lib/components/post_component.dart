@@ -227,6 +227,29 @@ class Post {
   })  : comments = comments ?? [],
         likes = likes ?? []; // Default to an empty list if none is provided
 
+  @override
+  String toString() {
+    return '''
+    Post {
+      id: $id,
+      userId: $userId,
+      username: $username,
+      text: $text,
+      likes: ${likes.length} (${likes.join(', ')}),
+      comments: [
+        ${comments.map((comment) {
+      return '''
+          {
+            _id: ${comment['_id']},
+            content: ${comment['content']},
+            user: ${comment['user']},
+            createdAt: ${comment['createdAt']}
+          }''';
+    }).join(',\n')}
+      ]
+    }''';
+  }
+
   // Get image URL from the media list
   List<String> get imageUrls {
     // Extract URLs from the media list, assuming each media object has a 'url' field

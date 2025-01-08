@@ -116,15 +116,25 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
       final List<dynamic> data = List.from(response['messages']);
 
       List<MessageModel> loadedMessages = data.map((msg) {
-        // Converting the raw message data into MessageModel
+        final sender = msg['sender'] ?? {};
+        final content = msg['content'] ?? '';
+        final timestamp = msg['timestamp'] ?? DateTime.now().toIso8601String();
+        final media = msg['media'] ?? [];
+
         return MessageModel(
-          uid: msg['_id'].toString(),
-          recvId: msg['groupId'],
-          message: msg['content'],
-          senderUsername: msg['sender'],
-          senderProfileImage: "https://via.placeholder.com/150",
-          type: MessageType.text, // Modify if you handle other message types
-          timeSent: DateTime.parse(msg['timestamp']),
+          uid: msg['_id'] ?? '', // Ensure a fallback for `_id`
+          recvId: msg['groupId']['_id'] ?? '',
+          message: content,
+          senderUsername: sender['username'] ?? 'Unknown',
+          senderProfileImage:
+              "https://via.placeholder.com/150", // Default profile image
+          type: media.isNotEmpty
+              ? MessageType.image
+              : MessageType.text, // Handle media
+          timeSent: DateTime.parse(timestamp),
+          files: media.isNotEmpty
+              ? media.join(', ')
+              : null, // Combine media paths if available
         );
       }).toList();
       print("chat history loaded successfully as per my check");
@@ -155,7 +165,7 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
             uid: Random().nextInt(100000).toString(),
             recvId: widget.currentUserName,
             message: data['content'],
-            senderUsername: data['sender'],
+            senderUsername: data['sender']['username'],
             senderProfileImage: "",
             type: MessageType.text,
             timeSent: DateTime.now(),

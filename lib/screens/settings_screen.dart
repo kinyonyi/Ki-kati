@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:ki_kati/screens/help_screen.dart';
 import 'package:ki_kati/components/http_servive.dart';
@@ -156,12 +155,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
-            SettingItem(
+            /*SettingItem(
               icon: Icons.lock,
               title: "Chat",
               subtitle: "Chat history, theme, wallpapers",
               onTap: () {},
             ),
+            
             SettingItem(
               icon: Icons.info,
               title: "Notifications",
@@ -174,6 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
+            */
             SettingItem(
               icon: Icons.contacts,
               title: "Contacts",
@@ -199,8 +200,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SettingItem(
               icon: Icons.storage,
-              title: "Storage and data",
-              subtitle: "Network usage, storage usage",
+              title: "Privacy policy",
+              subtitle: "View our app policies",
               onTap: () {
                 Navigator.push(
                   context,

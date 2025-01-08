@@ -72,14 +72,18 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         setState(() {
           // Add the new comment to the comments list
           final newComment = {
-            '_id': '123',
+            '_id': response['body']['comment']['_id'],
             'content': response['body']['comment']['content'],
-            'user': response['body']['comment']['user'],
+            'user': response['body']['comment']['user']['username'],
             'createdAt': DateTime.now().toIso8601String(),
+            'replies': [],
           };
+          print("This is the added comment now!");
+          print(newComment);
 
           // Add the new comment to the existing list
           widget.post.addComment(newComment);
+          print(widget.post);
         });
 
         // Ensure scrolling happens after the comment is added
@@ -162,6 +166,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           final replyData = response['body']['reply'];
           final comment = widget.post.comments
               .firstWhere((comment) => comment['_id'] == commentId);
+          // Initialize replies if null before adding
+          comment['replies'] ??= [];
           comment['replies'].add(replyData);
         });
 
@@ -317,7 +323,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   children: [
                     // Comment
                     ListTile(
-                      title: Text(comment['user'] ?? 'Anonymous'),
+                      title: Text(comment['user']['username'] ?? 'Anonymous'),
                       subtitle: Text(comment['content'] ?? 'No content'),
                       trailing: Text(_formatTimestamp(
                           DateTime.parse(comment['createdAt']))),
@@ -328,11 +334,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                     ),
                     // Replies (only visible if this comment's ID is in the expanded set)
                     if (_expandedComments.contains(comment['_id']))
-                      for (var reply in comment['replies'])
+                      for (var reply in comment['replies'] ?? [])
                         Padding(
                           padding: const EdgeInsets.only(left: 16.0),
                           child: ListTile(
-                            title: Text(reply['user'] ?? 'Anonymous'),
+                            title:
+                                Text(reply['user']['username'] ?? 'Anonymous'),
                             subtitle: Text(reply['content'] ?? 'No content'),
                             trailing: Text(_formatTimestamp(
                                 DateTime.parse(reply['createdAt']))),
@@ -350,7 +357,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                 controller: _replyController,
                                 style: const TextStyle(fontSize: 14),
                                 decoration: const InputDecoration(
-                                    hintText: 'Add a reply...'),
+                                  hintText: 'Add a reply...',
+                                  border:
+                                      InputBorder.none, // Removes the border
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),

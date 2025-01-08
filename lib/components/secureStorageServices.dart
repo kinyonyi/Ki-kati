@@ -41,8 +41,12 @@ class SecureStorageService {
     try {
       Map<String, dynamic>? existingData = await retrieveData(key);
 
+      print("Thius is the existing data");
+      print(existingData);
+
       if (existingData != null) {
-        existingData.addAll(updates); // Merge updates into existing data
+        existingData['user'] = updates;
+        //existingData.addAll(updates); // Merge updates into existing data
 
         // Step 3: Store the updated data back into storage
         await storeData(key, existingData);
