@@ -114,6 +114,20 @@ class SocketService with ChangeNotifier {
       }
     });
 
+    // Listen for incoming messages (directMessage)
+    socket.on("messageReceived", (data) {
+      print("This is the data from group socket");
+      print(data);
+      if (data != null) {
+        receivedMessages.add({
+          'sender': data['sender'],
+          'content': data['content'],
+        });
+        print("Received message: ${data['content']}");
+        notifyListeners(); // Notify listeners to update the UI
+      }
+    });
+
     socket.on('typing', (data) {
       if (data != null) {
         String typingUser = data['username'];

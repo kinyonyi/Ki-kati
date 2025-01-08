@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ki_kati/components/custom_button.dart';
 import 'package:ki_kati/components/http_servive.dart';
+import 'package:ki_kati/components/secureStorageServices.dart';
 import 'package:ki_kati/screens/group_message_screen.dart';
 
 class KikatiGroup extends StatefulWidget {
@@ -13,6 +14,8 @@ class KikatiGroup extends StatefulWidget {
 class _KikatiGroupState extends State<KikatiGroup> {
   final TextEditingController _groupNameController = TextEditingController();
   final HttpService httpService = HttpService("https://ki-kati.com/api");
+  SecureStorageService storageService = SecureStorageService();
+  Map<String, dynamic> user = {};
 
   bool _isLoading = false;
   bool isLoading = false;
@@ -25,6 +28,18 @@ class _KikatiGroupState extends State<KikatiGroup> {
   Set<String> selectedUsernames = {}; // Set to track selected usernames
 
   bool isMyGroups = true; // Track if the "My Groups" button is selected
+
+  Future<void> getUserData() async {
+    // Retrieve user data from secure storage
+    Map<String, dynamic>? retrievedUserData =
+        await storageService.retrieveData('user_data');
+
+    if (retrievedUserData != null) {
+      setState(() {
+        user = retrievedUserData["user"];
+      });
+    }
+  }
 
   // Fetch the user's friends
   Future<void> getFriends() async {
@@ -172,6 +187,7 @@ class _KikatiGroupState extends State<KikatiGroup> {
     getFriends(); // Fetch friends on initialization
     getMyGroups(); // Fetch the user's groups
     getAvailableGroups(); // Fetch available groups
+    getUserData(); //Get data for current user stored in secure storage
   }
 
   // Show bottom sheet for members of the group
@@ -474,8 +490,8 @@ class _KikatiGroupState extends State<KikatiGroup> {
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 GroupMessageScreen(
-                                              currentUserName:
-                                                  "unknown", //get teh details of the current logged in user from local storage to use for typing purposes
+                                              currentUserName: user[
+                                                  "username"], //get teh details of the current logged in user from local storage to use for typing purposes
                                               targetGroupId:
                                                   group['_id'] ?? "Unknown",
                                               targetGroupName:

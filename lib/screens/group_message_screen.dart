@@ -108,25 +108,26 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
   Future<List<MessageModel>> fetchChatHistory() async {
     try {
       final response =
-          await httpService.get("/groups/conversation/${widget.targetGroupId}");
-      //print(response);
+          await httpService.get("/groups/messages/${widget.targetGroupId}");
+
+      print(response['messages']);
 
       // Assuming response is a list of messages from the API
-      final List<dynamic> data = List.from(response);
+      final List<dynamic> data = List.from(response['messages']);
 
       List<MessageModel> loadedMessages = data.map((msg) {
         // Converting the raw message data into MessageModel
         return MessageModel(
           uid: msg['_id'].toString(),
-          recvId: msg['recipient']['_id'],
+          recvId: msg['groupId'],
           message: msg['content'],
-          senderUsername: msg['sender']['username'],
-          senderProfileImage: msg['sender']['profileImage'] ??
-              "", // Assuming sender profile image is available
+          senderUsername: msg['sender'],
+          senderProfileImage: "https://via.placeholder.com/150",
           type: MessageType.text, // Modify if you handle other message types
           timeSent: DateTime.parse(msg['timestamp']),
         );
       }).toList();
+      print("chat history loaded successfully as per my check");
 
       return loadedMessages;
     } catch (error) {
@@ -147,7 +148,7 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
     _loadChatHistory();
 
     // Listen for new direct messages
-    _socketService.socket.on("directMessage", (data) {
+    _socketService.socket.on("messageReceived", (data) {
       if (mounted) {
         setState(() {
           messages.add(MessageModel(
@@ -228,7 +229,7 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
     }
 
     // Remove socket listeners
-    _socketService.socket.off("directMessage");
+    _socketService.socket.off("messageReceived");
     _socketService.socket.off('typing');
     _socketService.socket.off('stop_typing');
 
@@ -258,7 +259,7 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
   }
 
   // Function to send message
-  void sendMessage() {
+  void sendMessage() async {
     // ignore: unnecessary_null_comparison
     if (messageController.text.isNotEmpty || filesSelected.isNotEmpty) {
       final message = MessageModel(
@@ -275,9 +276,28 @@ class _GroupMessageScreenState extends State<GroupMessageScreen> {
 
       setState(() {
         messages.add(message);
-        _socketService.sendMessage(widget.targetGroupId, messageController.text,
-            widget.currentUserName);
       });
+
+      try {
+        final response = await httpService.post('/groups/sendMessage', {
+          "groupId": widget.targetGroupId,
+          "content": messageController.text
+        });
+        print(response);
+        if (response['statusCode'] == 201) {
+          // Simulate success
+          print("data updated");
+        } else {
+          // Handle other status codes
+          print(response);
+        }
+      } catch (e) {
+        print('Error: $e'); // Handle errors here
+      } finally {
+        setState(() {
+          print("done");
+        });
+      }
 
       messageController.clear();
 

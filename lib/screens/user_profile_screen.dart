@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ki_kati/components/http_servive.dart';
 import 'package:ki_kati/components/secureStorageServices.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -11,6 +12,9 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   SecureStorageService storageService = SecureStorageService();
   Map<String, dynamic> user = {}; // Initialize user data
+
+  final HttpService httpService = HttpService("https://ki-kati.com/api");
+  bool _isLoading = false;
 
   // Controllers for the form fields
   late TextEditingController _usernameController;
@@ -70,7 +74,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Error",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          content: Text(message,
+              style: const TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18.0)),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the pop-up
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _saveProfile() async {
     final updatedUserData = {
       "username": _usernameController.text,
       "firstName": _firstNameController.text,
@@ -81,6 +110,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _dateOfBirthController.text, // Here we save the formatted date
       "gender": _gender,
     };
+
+    try {
+      final response = await httpService.put('/auth/profile', updatedUserData);
+      print(response);
+      if (response['statusCode'] == 201) {
+        // Simulate success
+        print("data updated");
+        String message =
+            response['body']['message'] ?? 'Data Updated Successfully!';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      } else {
+        // Handle other status codes
+        print(response);
+        _showErrorDialog(response['body']['message']);
+      }
+    } catch (e) {
+      print('Error: $e'); // Handle errors here
+      _showErrorDialog('An error occurred. Please try again.');
+    } finally {
+      setState(() {
+        _isLoading = false; // Set loading to false
+      });
+    }
 
     // For demonstration purposes, print the updated user data
     print(updatedUserData);

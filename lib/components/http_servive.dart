@@ -138,6 +138,42 @@ class HttpService {
     }
   }
 
+    // Generic PUT method
+  Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    Map<String, dynamic>? retrievedUserData =
+        await storageService.retrieveData('user_data');
+    final token = retrievedUserData?['token'];
+
+    Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    try {
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: json.encode(data),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode <= 500) {
+        return {
+          'statusCode': response.statusCode,
+          'body': jsonDecode(response.body),
+        };
+      } else {
+        throw Exception('Failed to update data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
   // Generic DELETE method
   Future<dynamic> delete(String endpoint) async {
     final url = Uri.parse('$baseUrl$endpoint');
