@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ki_kati/screens/chat_screen.dart';
-import 'package:ki_kati/screens/feed_screen.dart';
 import 'package:ki_kati/screens/friend_requests_screen.dart';
 import 'package:ki_kati/screens/friends_screen.dart';
 import 'package:ki_kati/screens/group_screen.dart';
 import 'package:ki_kati/screens/market_screen.dart';
+import 'package:ki_kati/screens/postsFeedScreen.dart';
 import 'package:ki_kati/screens/search_screen.dart';
 import 'package:ki_kati/screens/settings_screen.dart';
 
@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const FeedScreen(),
+                    builder: (context) => PostsFeedScreen(),
                   ),
                 );
               }
@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Icon(
                         Icons.favorite,
-                        color: Colors.red,
+                        color: Colors.white,
                         size: 18,
                       ),
                       SizedBox(width: 8),

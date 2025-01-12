@@ -1,210 +1,148 @@
 import 'package:flutter/material.dart';
 import 'package:ki_kati/components/http_servive.dart';
-import 'package:ki_kati/components/post_component.dart';
+import 'package:ki_kati/components/secureStorageServices.dart';
 
 class PostDetailsScreen extends StatefulWidget {
-  final Post post; // Accept Post object as parameter
-  const PostDetailsScreen({super.key, required this.post});
+  final String postId; // Accept postId instead of a Post object
+  const PostDetailsScreen({super.key, required this.postId});
 
   @override
   State<PostDetailsScreen> createState() => _PostDetailsScreenState();
 }
 
 class _PostDetailsScreenState extends State<PostDetailsScreen> {
+  SecureStorageService storageService = SecureStorageService();
   final HttpService httpService = HttpService("https://ki-kati.com/api/posts");
-  final ScrollController _scrollController =
-      ScrollController(); //For Auto ScrollController
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _replyController = TextEditingController();
 
+  Map<String, dynamic>? postDetails;
+  Set<String> _expandedComments = {};
   String? _replyToCommentId;
-  TextEditingController _replyController = TextEditingController();
-
-  // This keeps track of which comments have expanded replies
-  Set<String> _expandedComments = Set<String>();
-
   bool _isLoading = false;
 
-  Map<String, dynamic> data = {};
+  Map<String, dynamic>? retrievedUserData;
 
-  Future<void> getDetails() async {
-    print("This is the post ID");
-    print(widget.post.id);
-    try {
-      // Call the delete API
-      final response = await httpService.get("/${widget.post.id}");
-      print("Post details here!");
-      setState(() {
-        data = response; // Update the state to reflect the new data
-      });
-      print(response);
-
-      // Scroll to the last comment after loading the post details
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
-    } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load friends')),
-      );
-    } finally {
-      print("done");
-    }
+  Future<void> _fetchUserData() async {
+    retrievedUserData = await storageService.retrieveData('user_data');
+    setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
-    getDetails();
+    _fetchPostDetails();
+    _fetchUserData();
   }
 
-  void _addComment(String postId, String comment) async {
+  Future<void> _fetchPostDetails() async {
     setState(() {
-      _isLoading = true; // Set loading to false
+      _isLoading = true;
     });
 
     try {
-      final response =
-          await httpService.post('/$postId/comment', {'content': comment});
-      print("This is the added comment my brother david!");
+      final response = await httpService.get('/${widget.postId}');
       print(response);
+      setState(() {
+        postDetails = response;
+      });
+    } catch (e) {
+      print('Error fetching post details: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load post details')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _addComment(String comment) async {
+    if (comment.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await httpService.post(
+        '/${widget.postId}/comment',
+        {'content': comment},
+      );
 
       if (response['statusCode'] == 201) {
         setState(() {
-          // Add the new comment to the comments list
-          final newComment = {
-            '_id': response['body']['comment']['_id'],
-            'content': response['body']['comment']['content'],
-            'user': response['body']['comment']['user']['username'],
-            'createdAt': DateTime.now().toIso8601String(),
-            'replies': [],
-          };
-          print("This is the added comment now!");
-          print(newComment);
-
-          // Add the new comment to the existing list
-          widget.post.addComment(newComment);
-          print(widget.post);
+          postDetails?['comments'].add(response['body']['comment']);
         });
-
-        // Ensure scrolling happens after the comment is added
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom(); // Scroll to the new comment
-        });
-
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(response['body']['message'])));
-      } else {
-        final String errorMessage =
-            response['body']['message'] ?? 'Something went wrong';
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red[400],
-        ));
+        _commentController.clear();
+        _scrollToBottom();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['body']['message'])),
+        );
       }
     } catch (e) {
-      print('Error: $e'); // Handle errors here\
+      print('Error adding comment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to add comment')),
+      );
     } finally {
       setState(() {
-        _isLoading = false; // Set loading to false
+        _isLoading = false;
       });
     }
-    // ignore: use_build_context_synchronously
-    Navigator.of(context).pop();
-  }
-
-  // Add delete comment method
-  Future<void> _deleteComment(String postId, String commentId) async {
-    setState(() {
-      widget.post.comments
-          .removeWhere((comment) => comment['_id'] == commentId);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Comment deleted successfully')),
-    );
-    /*
-    try {
-      // Call the delete API to delete the comment
-      final response = await httpService.delete('/$postId/comment/$commentId');
-      print("Comment deleted: $response");
-
-      if (response['statusCode'] == 200) {
-        // On successful deletion, remove the comment from the list
-        setState(() {
-          widget.post.comments.removeWhere((comment) => comment['id'] == commentId);
-        });
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Comment deleted successfully')),
-        );
-      } else {
-        final String errorMessage =
-            response['body']['message'] ?? 'Something went wrong';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red[400]),
-        );
-      }
-    } catch (e) {
-      print('Error: $e'); // Handle any errors
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to delete comment')),
-      );
-    }
-    */
   }
 
   void _addReply(String commentId, String reply) async {
     if (reply.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final response = await httpService.post(
-          '/${widget.post.id}/comment/$commentId/reply', {'content': reply});
+        '/${widget.postId}/comment/$commentId/reply',
+        {'content': reply},
+      );
 
       if (response['statusCode'] == 201) {
         setState(() {
-          final replyData = response['body']['reply'];
-          final comment = widget.post.comments
-              .firstWhere((comment) => comment['_id'] == commentId);
-          // Initialize replies if null before adding
-          comment['replies'] ??= [];
-          comment['replies'].add(replyData);
+          final comment =
+              postDetails?['comments'].firstWhere((c) => c['_id'] == commentId);
+          comment['replies'].add(response['body']['reply']);
         });
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
-        });
-
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Reply added')));
-      } else {
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Failed to add reply')));
+        _replyController.clear();
+        _scrollToBottom();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reply added')),
+        );
       }
     } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Error occurred')));
+      print('Error adding reply: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to add reply')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  void _toggleRepliesVisibility(String commentId) {
+  void _toggleReplies(String commentId) {
     setState(() {
       if (_expandedComments.contains(commentId)) {
         _expandedComments.remove(commentId);
       } else {
         _expandedComments.add(commentId);
       }
-      _replyToCommentId = commentId;
     });
   }
 
-  // Scroll to the last comment
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      // Animate to the bottom of the ListView
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
@@ -213,199 +151,62 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final post = widget.post; // Access the passed post object
-
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.black,
-        title: const Text(
-          'Posts Details',
-          style: TextStyle(fontSize: 16),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // User Info
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(post.userThumbnailUrl),
-                ),
-                const SizedBox(width: 8),
-                Text(post.username,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Text(_formatTimestamp(post.timestamp),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Post Text
-            Text(post.text),
-            // Post Image (if available)
-            /*
-            if (post.imageUrl != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Image.network(post.imageUrl!),
-              ),
-              */
-            // Display media (image/video)
-            if (post.media.isNotEmpty)
-              ...post.media.map((mediaItem) {
-                if (mediaItem['type'] == 'image') {
-                  return Image.network(
-                      "https://ki-kati.com${mediaItem['url']}");
-                }
-                // Add handling for other types like video, if necessary
-                return Container(); // Return empty container if media type is not recognized
-              }).toList(),
-            const SizedBox(height: 16),
-            // Likes and Comments
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.thumb_up, color: Colors.red[600], size: 20),
-                  onPressed: () {
-                    // Handle like action (example: toggle like for user)
-                    setState(() {
-                      post.toggleLike('userId'); // Use actual userId here
-                    });
-                  },
-                ),
-                Text(post.likes.length.toString(),
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(width: 16),
-                IconButton(
-                  icon: Icon(Icons.comment, color: Colors.amber[700], size: 20),
-                  onPressed: () {
-                    // Show bottom sheet to add a comment
-                    _showCommentPopup(context);
-                  },
-                ),
-                Text(post.comments.length.toString(),
-                    style: const TextStyle(fontSize: 16)),
-              ],
-            ),
-            const Divider(),
-            // Comments Section
-            const Text('Comments',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            // Comments and Replies
-            for (var comment in post.comments)
-              Dismissible(
-                key: Key(comment[
-                    '_id']), // Unique key for each comment to handle dismissal
-                direction: DismissDirection
-                    .endToStart, // Swipe direction (left to right)
-                onDismissed: (direction) {
-                  // Handle the dismissal action (e.g., delete comment)
-                  _deleteComment(post.id, comment['_id']);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Comment deleted')),
-                  );
-                },
-                background: Container(
-                  color: Colors.red, // Color when swiping to delete
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Comment
-                    ListTile(
-                      title: Text(comment['user']['username'] ?? 'Anonymous'),
-                      subtitle: Text(comment['content'] ?? 'No content'),
-                      trailing: Text(_formatTimestamp(
-                          DateTime.parse(comment['createdAt']))),
-                      onTap: () {
-                        // Toggle replies visibility for this comment
-                        _toggleRepliesVisibility(comment['_id']);
-                      },
-                    ),
-                    // Replies (only visible if this comment's ID is in the expanded set)
-                    if (_expandedComments.contains(comment['_id']))
-                      for (var reply in comment['replies'] ?? [])
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16.0),
-                          child: ListTile(
-                            title:
-                                Text(reply['user']['username'] ?? 'Anonymous'),
-                            subtitle: Text(reply['content'] ?? 'No content'),
-                            trailing: Text(_formatTimestamp(
-                                DateTime.parse(reply['createdAt']))),
-                          ),
-                        ),
-                    if (_replyToCommentId == comment['_id'])
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, top: 8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Text field for adding a reply
-                            Expanded(
-                              child: TextField(
-                                controller: _replyController,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: const InputDecoration(
-                                  hintText: 'Add a reply...',
-                                  border:
-                                      InputBorder.none, // Removes the border
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Button to submit the reply
-                            ElevatedButton(
-                              onPressed: () {
-                                String reply = _replyController.text.trim();
-                                if (reply.isNotEmpty) {
-                                  _addReply(comment['_id'],
-                                      reply); // Add the reply to the comment
-                                  _replyController.clear();
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Reply cannot be empty')),
-                                  );
-                                }
-                              },
-                              child: const Text('Submit Reply'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const Divider(),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
+  String _formatTimestamp(String timestamp) {
+    final date = DateTime.parse(timestamp);
+    final difference = DateTime.now().difference(date);
+    if (difference.inDays > 0) return '${difference.inDays} days ago';
+    if (difference.inHours > 0) return '${difference.inHours} hours ago';
+    if (difference.inMinutes > 0) return '${difference.inMinutes} minutes ago';
+    return 'Just now';
   }
 
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+  Future<void> _likePost(String postId) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
+      //like/unlike
+      final isLiked =
+          postDetails?['likes'].contains(retrievedUserData?['user']['_id']);
+      final endpoint = isLiked ? '/$postId/unlike' : '/$postId/like';
+
+      final response = await httpService.post(endpoint, {});
+      if (response['statusCode'] == 200) {
+        setState(() {
+          if (isLiked) {
+            postDetails?['likes'].remove(retrievedUserData?['user']['_id']);
+          } else {
+            postDetails?['likes'].add(retrievedUserData?['user']['_id']);
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['body']['message']),
+            backgroundColor: isLiked ? Colors.red[400] : Colors.green[400],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['body']['message'] ?? 'Error liking post'),
+            backgroundColor: Colors.red[400],
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -448,9 +249,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                       onPressed: () {
                         String comment = _commentController.text.trim();
                         if (comment.isNotEmpty) {
-                          _addComment(
-                              widget.post.id, comment); // Pass comment here
-                          //Navigator.of(context).pop(); // Close the popup after posting
+                          _addComment(comment.trim()); // Pass comment here
+                          Navigator.of(context)
+                              .pop(); // Close the popup after posting
                         } else {
                           // Show an error message if the comment is empty
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -476,66 +277,165 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       },
     );
   }
-}
 
+  @override
+  Widget build(BuildContext context) {
+    if (postDetails == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Post Details')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-/*
- void _showCommentBottomSheet(BuildContext context) {
-    final TextEditingController _commentController = TextEditingController();
+    final post = postDetails!;
+    final comments = post['comments'] ?? [];
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // To make the height configurable
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Add a comment',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _commentController,
-                decoration:
-                    const InputDecoration(hintText: 'Type your comment'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      String comment = _commentController.text.trim();
-                      if (comment.isNotEmpty) {
-                        _addComment(
-                            widget.post.id, comment); // Pass comment here
-                      } else {
-                        // Show an error message if comment is empty
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Comment cannot be empty')),
-                        );
-                      }
-                    },
-                    child: const Text('Post Comment'),
+    return Scaffold(
+      appBar: AppBar(
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.teal,
+        title: const Text(
+          'Post Details',
+          style: TextStyle(fontSize: 16),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListView(
+              controller: _scrollController,
+              children: [
+                // Post content
+                Text(
+                  post['content'] ?? 'No content',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                // Media display
+                if (post['media'] != null && post['media'].isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      'https://ki-kati.com${post['media'][0]['url']}',
+                      fit: BoxFit.cover,
+                      height: 200,
+                      width: double.infinity,
+                    ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close the bottom sheet
-                    },
-                    child: const Text('Cancel'),
+
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.thumb_up,
+                        color: post['likes']
+                                .contains(retrievedUserData?['user']['_id'])
+                            ? Colors.red
+                            : Colors.grey, // Correct ternary operator
+                        size: 20,
+                      ),
+                      onPressed: () => _likePost(post['_id']),
+                    ),
+                    Text(postDetails!['likes'].length.toString(),
+                        style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: Icon(Icons.comment,
+                          color: Colors.amber[700], size: 20),
+                      onPressed: () {
+                        // Show bottom sheet to add a comment
+                        _showCommentPopup(context);
+                      },
+                    ),
+                    Text(postDetails!['comments'].length.toString(),
+                        style: const TextStyle(fontSize: 16)),
+                  ],
+                ),
+
+                const Divider(),
+                // Comments Section
+                const Text('Comments', style: TextStyle(fontSize: 18)),
+                const SizedBox(height: 8),
+                for (var comment in comments)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        title: Text(comment['user']['username'] ?? 'Anonymous'),
+                        subtitle: Text(comment['content']),
+                        trailing: IconButton(
+                          icon: Icon(
+                            _expandedComments.contains(comment['_id'])
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () => _toggleReplies(comment['_id']),
+                        ),
+                      ),
+                      if (_expandedComments.contains(comment['_id']))
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16.0),
+                          child: Column(
+                            children: [
+                              for (var reply in comment['replies'] ?? [])
+                                ListTile(
+                                  title: Text(reply['user']),
+                                  /*reply['user']['username'] ?? 'Anonymous'*/
+                                  subtitle: Text(reply['content']),
+                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _replyController,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Write a reply...',
+                                        border: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.send),
+                                    onPressed: () => _addReply(
+                                      comment['_id'],
+                                      _replyController.text.trim(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      const Divider(),
+                    ],
                   ),
-                ],
-              ),
-            ],
+                // Add comment input
+                TextField(
+                  controller: _commentController,
+                  decoration: const InputDecoration(
+                    labelText: 'Add a comment',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (value) => _addComment(value.trim()),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          // Loading Indicator
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color:
+                    Colors.black.withOpacity(0.5), // Semi-transparent overlay
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
-*/
+}

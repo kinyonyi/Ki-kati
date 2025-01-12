@@ -5,7 +5,7 @@ import 'package:intl/intl.dart'; // For date formatting
 import 'dart:math';
 import 'package:ki_kati/services/socket_service.dart';
 import 'package:ki_kati/components/http_servive.dart';
-import 'package:file_picker/file_picker.dart';
+//import 'package:file_picker/file_picker.dart';
 
 // Enum for Message Type (you can expand this as needed)
 enum MessageType { text, image, video }

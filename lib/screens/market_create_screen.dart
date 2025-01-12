@@ -36,14 +36,28 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
   String? _locationRegionError;
   String? _quantityError;
 
+  // Categories for dropdown
+  final List<String> categories = [
+    'Electronics',
+    'Clothing',
+    'Food',
+    'Services',
+    'Furniture',
+    'Other',
+  ];
+
+  String? selectedCategory; // Selected category
+
   void _clearFields() {
     titleController.clear();
     descriptionController.clear();
     priceController.clear();
-    categoryController.clear();
     locationCityController.clear();
     locationRegionController.clear();
     quantityController.clear();
+    filesSelected.clear();
+    selectedCategory = null; // Reset the selected category
+    //setState(() {}); // Trigger a UI update to reflect the reset dropdown
   }
 
   // Validate inputs
@@ -53,8 +67,9 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
         ? 'Description cannot be empty'
         : null;
     _priceError = priceController.text.isEmpty ? 'Price cannot be empty' : null;
-    _categoryError =
-        categoryController.text.isEmpty ? 'Category cannot be empty' : null;
+    _categoryError = (selectedCategory == null || selectedCategory!.isEmpty)
+        ? 'Category cannot be empty'
+        : null;
     _locationCityError = locationCityController.text.isEmpty
         ? 'Location City cannot be empty'
         : null;
@@ -118,22 +133,26 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
       });
       return;
     }
+
     try {
       final response = await httpService.postdio('/market/create', {
         'title': titleController.text,
         'price': priceController.text,
-        'category': categoryController.text,
+        'description': descriptionController.text,
+        'category': selectedCategory,
         'location[city]': locationCityController.text,
         'location[region]': locationRegionController.text,
         'media': filesSelected,
         'quantity': quantityController.text,
       });
+
       print(response);
 
       if (response['statusCode'] == 201) {
         setState(() {
           _isLoading = false;
           // Reset the input fields
+          _clearFields();
         });
       }
     } catch (e) {
@@ -187,13 +206,30 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
                 errorText: _priceError,
               ),
               const SizedBox(height: 10),
-              TextFieldComponent(
-                controller: categoryController,
-                hintText: 'Category',
-                obscureText: false,
-                suffixIcon:
-                    const Icon(Icons.category, color: Color(0xFFBDBDBD)),
-                errorText: _categoryError,
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: InputDecoration(
+                  errorText: _categoryError,
+                  enabledBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  fillColor: Colors.grey.shade200,
+                  filled: true,
+                ),
+                items: categories.map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value;
+                  });
+                },
               ),
               const SizedBox(height: 10),
               Row(
@@ -311,8 +347,9 @@ class _MarketCreateScreenState extends State<MarketCreateScreen> {
               const SizedBox(height: 10),
               CustomButton(
                 onTap: _isLoading ? null : createItem,
-                buttonText:
-                    _isLoading ? "Creating account..." : "Create an account",
+                buttonText: _isLoading
+                    ? "Creating Market Item..."
+                    : "Create Market Item",
                 isLoading: _isLoading,
               ),
               const SizedBox(height: 10),

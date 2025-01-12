@@ -348,6 +348,212 @@ class _MessageScreenState extends State<MessageScreen> {
     );
 
     if (result != null && result.files.isNotEmpty) {
+      // Convert picked files to a list of File objects
+      List<File> selectedFiles =
+          result.files.map((file) => File(file.path!)).toList();
+
+      setState(() {
+        filesSelected = selectedFiles; // Update global file list
+      });
+
+      String fileNames = result.files.map((e) => e.name).join(', ');
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Picked files: $fileNames"),
+      ));
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (BuildContext context, StateSetter bottomSheetSetState) {
+              return Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height *
+                      0.4, // Max height 40% of screen
+                ),
+                padding: const EdgeInsets.all(16.0),
+                child: ListView.builder(
+                  itemCount: filesSelected.length,
+                  itemBuilder: (context, index) {
+                    File file = filesSelected[index];
+                    String fileName = file.path.split('/').last;
+                    String fileExtension =
+                        file.path.split('.').last.toLowerCase();
+
+                    return ListTile(
+                      title: Text(fileName),
+                      subtitle: Text("Type: $fileExtension"),
+                      leading: fileExtension == 'jpg' ||
+                              fileExtension == 'png' ||
+                              fileExtension == 'jpeg'
+                          ? Image.file(
+                              file,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ) // Show image preview
+                          : const Icon(Icons
+                              .insert_drive_file), // Generic icon for other files
+                      trailing: IconButton(
+                        icon:
+                            const Icon(Icons.remove_circle, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            filesSelected.removeAt(index); // Update global list
+                          });
+
+                          bottomSheetSetState(() {}); // Re-render bottom sheet
+
+                          // Close bottom sheet if all files are removed
+                          if (filesSelected.isEmpty) {
+                            Navigator.pop(context);
+                          }
+
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text("Removed: $fileName"),
+                          ));
+                        },
+                      ),
+                      onTap: () async {
+                        // Preview file based on type
+                        if (fileExtension == 'jpg' ||
+                            fileExtension == 'png' ||
+                            fileExtension == 'jpeg') {
+                          handleFilePreview(context, file); // Preview image
+                        } else if (fileExtension == 'txt') {
+                          String content = await file.readAsString();
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text(fileName),
+                                content:
+                                    SingleChildScrollView(child: Text(content)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content: Text(
+                                "Preview not available for this file type."),
+                          ));
+                        }
+                      },
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("No file was picked"),
+      ));
+    }
+  }
+
+  /*
+  Future<void> pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      // List to store selected files
+      List<File> selectedFiles = [];
+
+      for (var file in result.files) {
+        // Create a File object for each picked file
+        selectedFiles.add(File(file.path!));
+      }
+
+      setState(() {
+        filesSelected = selectedFiles;
+      });
+
+      String fileNames = result.files.map((e) => e.name).join(', ');
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Picked files: $fileNames"),
+      ));
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true, // Allows more flexible height
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (BuildContext context, StateSetter bottomSheetSetState) {
+              return Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height *
+                      0.4, // Set max height to 40% of screen
+                ),
+                padding: const EdgeInsets.all(16.0),
+                child: ListView.builder(
+                  itemCount: filesSelected.length,
+                  itemBuilder: (context, index) {
+                    File file = filesSelected[index];
+                    String fileName = file.path.split('/').last;
+                    String fileExtension =
+                        file.path.split('.').last.toLowerCase();
+
+                    return ListTile(
+                      title: Text(fileName),
+                      subtitle: Text("Type: $fileExtension"),
+                      leading: const Icon(Icons.insert_drive_file),
+                      trailing: IconButton(
+                        icon:
+                            const Icon(Icons.remove_circle, color: Colors.red),
+                        onPressed: () {
+                          // Remove the file and update both global and bottom sheet states
+                          setState(() {
+                            filesSelected.removeAt(index); // Update global list
+                          });
+
+                          bottomSheetSetState(() {}); // Re-render bottom sheet
+
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text("Removed: $fileName"),
+                          ));
+                        },
+                      ),
+                      onTap: () {
+                        handleFilePreview(context, file);
+                      },
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("No file was picked"),
+      ));
+    }
+  }
+  */
+
+  /*
+  Future<void> pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
       // List to store selected files
       List<File> selectedFiles = [];
 
@@ -428,6 +634,7 @@ class _MessageScreenState extends State<MessageScreen> {
       ));
     }
   }
+  */
 
   // Function to send message
   void sendMessage() {

@@ -138,7 +138,7 @@ class HttpService {
     }
   }
 
-    // Generic PUT method
+  // Generic PUT method
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl$endpoint');
 
@@ -259,8 +259,24 @@ class HttpService {
         options.headers!['Content-Type'] = 'multipart/form-data';
 
         // Make the POST request with multipart data
+
+        print("FormData fields:");
+        for (var field in formData.fields) {
+          print("${field.key}: ${field.value}");
+        }
+
+        print("FormData files:");
+        for (var file in formData.files) {
+          print(
+              "${file.key}: ${file.value.filename} (size: ${file.value.length} bytes)");
+        }
+
+        print("performing the post request now");
         Response response =
             await dio.post(url, data: formData, options: options);
+
+        print("This is the response");
+        print(response);
 
         // Check for successful response (2xx range)
         if (response.statusCode != null &&
